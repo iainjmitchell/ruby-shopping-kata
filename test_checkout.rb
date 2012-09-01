@@ -54,6 +54,7 @@ end
 class Checkout
 	def initialize(sku_prices)
 		@sku_prices = sku_prices
+		@scanner = Scanner.new(sku_prices)
 		@total = 0
 	end
 
@@ -64,6 +65,12 @@ class Checkout
 
 	def total()
 		@total
+	end
+end
+
+class Scanner
+	def initialize(sku_prices)
+
 	end
 end
 
