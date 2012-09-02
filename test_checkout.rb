@@ -10,10 +10,17 @@ class TestCheckout < Test::Unit::TestCase
 		return sku_prices
 	end
 
+	def get_special_offers
+		Hash[
+			'B', Special_Offer.new('B', 2, 20),
+			'A', Special_Offer.new('A', 3, 30)
+		]
+	end
+
 	def test_scan_one_a_total_equals_50 
 		sku_code = 'A'
 		sku_prices = get_sku_prices()
-		checkout = Checkout.new(sku_prices, Special_Offer.new('A', 3, 30))
+		checkout = Checkout.new(sku_prices, get_special_offers())
 		checkout.scan(sku_code)
 		assert_equal sku_prices.get_price_for(sku_code), checkout.total()
 	end
@@ -21,7 +28,7 @@ class TestCheckout < Test::Unit::TestCase
 	def test_scan_one_b_total_equals_35
 		sku_code = 'B'
 		sku_prices = get_sku_prices()
-		checkout = Checkout.new(sku_prices, Special_Offer.new('A', 3, 30))
+		checkout = Checkout.new(sku_prices, get_special_offers())
 		checkout.scan(sku_code)
 		assert_equal sku_prices.get_price_for(sku_code), checkout.total()
 	end
@@ -29,7 +36,7 @@ class TestCheckout < Test::Unit::TestCase
 	def test_scan_one_c_total_equals_20
 		sku_code = 'C'
 		sku_prices = get_sku_prices()
-		checkout = Checkout.new(sku_prices, Special_Offer.new('A', 3, 30))
+		checkout = Checkout.new(sku_prices, get_special_offers())
 		checkout.scan(sku_code)
 		assert_equal sku_prices.get_price_for(sku_code), checkout.total()
 	end
@@ -37,7 +44,7 @@ class TestCheckout < Test::Unit::TestCase
 	def test_scan_one_d_total_equals_15
 		sku_code = 'D'
 		sku_prices = get_sku_prices()
-		checkout = Checkout.new(sku_prices, Special_Offer.new('A', 3, 30))
+		checkout = Checkout.new(sku_prices, get_special_offers())
 		checkout.scan(sku_code)
 		assert_equal sku_prices.get_price_for(sku_code), checkout.total()
 	end
@@ -45,7 +52,7 @@ class TestCheckout < Test::Unit::TestCase
 	def test_scan_two_a_total_equals_100
 		sku_code = 'A'
 		sku_prices = get_sku_prices()
-		checkout = Checkout.new(sku_prices, Special_Offer.new('A', 3, 30))
+		checkout = Checkout.new(sku_prices, get_special_offers())
 		checkout.scan(sku_code).scan(sku_code)
 		assert_equal 100, checkout.total()
 	end
@@ -53,21 +60,40 @@ class TestCheckout < Test::Unit::TestCase
 	def test_scan_three_a_total_equals_120
 		sku_code = 'A'
 		sku_prices = get_sku_prices()
-		checkout = Checkout.new(sku_prices, Special_Offer.new('A', 3, 30))
+		checkout = Checkout.new(sku_prices, get_special_offers())
 		checkout
 			.scan(sku_code)
 			.scan(sku_code)
 			.scan(sku_code)
 		assert_equal 120, checkout.total()
 	end
+
+	def test_scan_two_b_total_equals_50
+		sku_code = 'B'
+		sku_prices = get_sku_prices()
+		checkout = Checkout.new(sku_prices, get_special_offers())
+		checkout
+			.scan(sku_code)
+			.scan(sku_code)
+		assert_equal 50, checkout.total()
+	end
+
+	def test_scan_1_b_and_2_a_total_equals_135
+		sku_prices = get_sku_prices()
+		checkout = Checkout.new(sku_prices, get_special_offers())
+		checkout
+			.scan('B')
+			.scan('A')
+			.scan('A')
+		assert_equal 135, checkout.total()
+	end
 end
 
 class Checkout
-	def initialize(sku_prices, special_offer)
+	def initialize(sku_prices, special_offers)
 		@totaller = Totaller.new()
 		@scanner = Scanner.new(@totaller, sku_prices)
-		@discounter = Discounter.new(@totaller, special_offer)
-		@special_offer = special_offer
+		@discounter = Discounter.new(@totaller, special_offers)
 	end
 
 	def scan(sku)
@@ -82,15 +108,19 @@ class Checkout
 end
 
 class Discounter 
-	def initialize(totaller, special_offer)
+	def initialize(totaller, special_offers)
 		@totaller = totaller
-		@special_offer = special_offer
-		@count = 0
+		@special_offers = special_offers
+		@sku_counts = Hash.new()
 	end
 
 	def apply_discount(sku)
-		@count += 1
-		@totaller.discount_by(@special_offer.discount) if @count == @special_offer.quanity
+		if !@sku_counts.member?(sku)
+			@sku_counts[sku] = 1
+		else
+			@sku_counts[sku]+=1
+		end
+		@totaller.discount_by(@special_offers[sku].discount) if @special_offers.member?(sku) && @sku_counts[sku] == @special_offers[sku].quanity
 	end
 end
 
