@@ -12,8 +12,8 @@ class TestCheckout < Test::Unit::TestCase
 
 	def get_special_offers
 		Hash[
-			'B', Special_Offer.new('B', 2, 20),
-			'A', Special_Offer.new('A', 3, 30)
+			'B', Special_Offer.new(2, 20),
+			'A', Special_Offer.new(3, 30)
 		]
 	end
 
@@ -87,6 +87,33 @@ class TestCheckout < Test::Unit::TestCase
 			.scan('A')
 		assert_equal 135, checkout.total()
 	end
+
+	def test_scan_6_a_total_equals_240
+		sku_code = 'A'
+		sku_prices = get_sku_prices()
+		checkout = Checkout.new(sku_prices, get_special_offers())
+		checkout
+			.scan(sku_code)
+			.scan(sku_code)
+			.scan(sku_code)
+			.scan(sku_code)
+			.scan(sku_code)
+			.scan(sku_code)
+		assert_equal 240, checkout.total()
+	end
+
+	def test_scan_3_a_2_b_1_d_total_equals_240
+		sku_prices = get_sku_prices()
+		checkout = Checkout.new(sku_prices, get_special_offers())
+		checkout
+			.scan('A')
+			.scan('B')
+			.scan('C')
+			.scan('A')
+			.scan('B')
+			.scan('A')
+		assert_equal 190, checkout.total()
+	end
 end
 
 class Checkout
@@ -115,12 +142,24 @@ class Discounter
 	end
 
 	def apply_discount(sku)
+		if (@special_offers.member?(sku))
+			increment_sku_count(sku)
+			@totaller.discount_by(@special_offers[sku].discount) if has_discount?(sku)	
+		end
+	end
+
+	private
+
+	def increment_sku_count(sku)
 		if !@sku_counts.member?(sku)
 			@sku_counts[sku] = 1
 		else
 			@sku_counts[sku]+=1
 		end
-		@totaller.discount_by(@special_offers[sku].discount) if @special_offers.member?(sku) && @sku_counts[sku] == @special_offers[sku].quanity
+	end
+
+	def has_discount?(sku)
+		(@sku_counts[sku] % @special_offers[sku].quanity == 0)
 	end
 end
 
@@ -155,10 +194,9 @@ class Scanner
 end
 
 class Special_Offer
-	attr_reader :sku, :quanity, :discount
+	attr_reader :quanity, :discount
 
-	def initialize(sku, quanity, discount)
-		@sku = sku
+	def initialize(quanity, discount)
 		@quanity = quanity
 		@discount = discount
 	end
@@ -172,7 +210,6 @@ class Sku_Prices
 	def add(sku, price)
 		@price_by_sku[sku] = price
 	end
-
 
 	def get_price_for(sku)
 		return @price_by_sku[sku]
